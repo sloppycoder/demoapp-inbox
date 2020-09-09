@@ -1,4 +1,4 @@
-package demoapp.trx;
+package demoapp.users;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,10 +6,10 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 @SpringBootApplication
 @EnableMongoRepositories
-public class TransactionApplication {
+public class Application {
 
 	public static void main(String[] args) {
-		SpringApplication.run(TransactionApplication.class, args);
+		SpringApplication.run(Application.class, args);
 	}
 
 }

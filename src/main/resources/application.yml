@@ -1,8 +1,6 @@
-
-
 spring:
   name:
-    transactions
+    inbox
   data:
     mongodb:
       uri: mongodb://demo:demo9@localhost:27017/demo?authSource=admin
