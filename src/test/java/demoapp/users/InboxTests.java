@@ -6,10 +6,13 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.http.ResponseEntity;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
+import org.springframework.http.HttpStatus;
+import org.springframework.util.Assert;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 
@@ -19,10 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class InboxTests {
 
 	@Autowired
-	RestTemplateBuilder builder;
-
-	@Autowired
-	MongoTemplate mongo;
+	ReactiveMongoTemplate mongo;
 
 	@LocalServerPort
 	String port;
@@ -30,17 +30,19 @@ class InboxTests {
 	@Test
 	@Order(1)
 	void populate_test_data() {
-		mongo.insertAll(testData());
+		mongo.insertAll(testData()).blockFirst();
 	}
 
 	@Test
 	@Order(2)
 	void can_get_unread_count() {
-		ResponseEntity<Integer> response = builder.build()
-				.getForEntity(getUrl("/1111/unread"),
-				Integer.class);
+		WebClient client = WebClient.builder().baseUrl(getUrl("/1111/unread")).build();
+		ClientResponse response = client.get().exchange().block();
+		Integer count = response.bodyToMono(Integer.class).block();
 
-		assertEquals(response.getBody().intValue(), 1);
+		assertEquals(response.statusCode(), HttpStatus.OK);
+		assertEquals(count, 1);
+
 	}
 
 	private List<Inbox> testData() {

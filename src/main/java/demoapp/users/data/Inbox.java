@@ -13,6 +13,6 @@ import java.util.List;
 public class Inbox {
   @Id String id;
   String userId;
-  int unreadCount;
+  Integer unreadCount;
   List<Message> messages;
 }
