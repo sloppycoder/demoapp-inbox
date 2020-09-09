@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -67,7 +68,7 @@ class InboxTests {
 		StepVerifier
 				.create(client.post()
 						.contentType(MediaType.APPLICATION_JSON)
-						.body(Mono.just("{\"subject\":\"no sub\", \"body\",\"body\"}"), String.class)
+						.body(Mono.just("{\"message\":\"subject|body\"}"), String.class)
 						.exchange())
 				.assertNext( response -> {
 					assertEquals(response.statusCode(), HttpStatus.ACCEPTED);
@@ -77,19 +78,14 @@ class InboxTests {
 	private List<Inbox> testData() {
 		Inbox inbox = new Inbox(null, "1111", 2,
 				List.of(
-						newMessage("subject 1|this is not how it works"),
-						newMessage("subject 2|this is absolutely how it works")
+						Message.create("subject 1|this is not how it works"),
+						Message.create("subject 2|this is absolutely how it works")
 						));
-		Inbox inbox2 = new Inbox(null, "2222", 1,
+		Inbox inbox2 = new Inbox(UUID.randomUUID().toString(), "2222", 1,
 				List.of(
-						newMessage("on subject|are you hungry?")
+						Message.create("on subject|are you hungry?")
 				));
 		return List.of(inbox, inbox2);
-	}
-
-	private Message newMessage(String line) {
-		String[] str = line.split("\\|");
-		return new Message(null, str[0], str[1], false);
 	}
 
 	private String getUrl(String contextPath) {

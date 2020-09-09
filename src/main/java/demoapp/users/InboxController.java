@@ -64,7 +64,7 @@ public class InboxController {
 
     log.info("new message for user {}", userId);
 
-    return saveNewMessageForUser(userId, body.get("subject"), body.get("body"))
+    return saveNewMessageForUser(userId, body.get("message"))
             .flatMap( result ->
                     ServerResponse.accepted().build()
             );
@@ -81,12 +81,11 @@ public class InboxController {
             .first();
   }
 
-  private Mono<Void> saveNewMessageForUser(String userId, String subject, String body) {
-    Message message = new Message(null, subject, body, false);
+  private Mono<Void> saveNewMessageForUser(String userId, String message) {
     return mongo.updateMulti(
                 new Query(where("userId").is(userId)),
                 new Update().inc("unreadCount", 1)
-                            .push("messages", message),
+                            .push("messages", Message.create(message)),
                 Inbox.class)
             .then();
   }
