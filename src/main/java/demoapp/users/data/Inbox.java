@@ -2,8 +2,8 @@ package demoapp.users.data;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.util.List;
 
@@ -11,7 +11,8 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class Inbox {
-  @Id String id;
+  @MongoId
+  String id;
   String userId;
   Integer unreadCount;
   List<Message> messages;

@@ -9,7 +9,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.List;
@@ -58,22 +60,36 @@ class InboxTests {
 				});
 	}
 
+	@Test
+	@Order(4)
+	void can_add_new_message() {
+		WebClient client = WebClient.builder().baseUrl(getUrl("/33/messages")).build();
+		StepVerifier
+				.create(client.post()
+						.contentType(MediaType.APPLICATION_JSON)
+						.body(Mono.just("{\"subject\":\"no sub\", \"body\",\"body\"}"), String.class)
+						.exchange())
+				.assertNext( response -> {
+					assertEquals(response.statusCode(), HttpStatus.ACCEPTED);
+				});
+	}
+
 	private List<Inbox> testData() {
 		Inbox inbox = new Inbox(null, "1111", 2,
 				List.of(
-						newMessage("1|subject 1|this is not how it works"),
-						newMessage("2|subject 2|this is absolutely how it works")
+						newMessage("subject 1|this is not how it works"),
+						newMessage("subject 2|this is absolutely how it works")
 						));
 		Inbox inbox2 = new Inbox(null, "2222", 1,
 				List.of(
-						newMessage("1|on subject|are you hungry?")
+						newMessage("on subject|are you hungry?")
 				));
 		return List.of(inbox, inbox2);
 	}
 
 	private Message newMessage(String line) {
 		String[] str = line.split("\\|");
-		return new Message(str[0], str[1], str[2], false);
+		return new Message(null, str[0], str[1], false);
 	}
 
 	private String getUrl(String contextPath) {

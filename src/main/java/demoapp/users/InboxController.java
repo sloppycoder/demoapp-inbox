@@ -2,21 +2,20 @@ package demoapp.users;
 
 import demoapp.users.data.Inbox;
 import demoapp.users.data.InboxNotFoundException;
-import lombok.extern.log4j.Log4j;
+import demoapp.users.data.Message;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Map;
 
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
@@ -31,7 +30,7 @@ public class InboxController {
     this.mongo = mongo;
   }
 
-  @RequestMapping(value = "/inbox/{userId}/unread")
+  @GetMapping(value = "/inbox/{userId}/unread")
   public Mono<Integer> getInboxUnreadCount(@PathVariable("userId") String userId) {
     log.info("retrieving unread count for user {}", userId);
 
@@ -43,7 +42,7 @@ public class InboxController {
             );
   }
 
-  @RequestMapping(value = "/inbox/{userId}/unread-sse")
+  @GetMapping(value = "/inbox/{userId}/unread-sse")
   public Flux<ServerSentEvent<Integer>> getInboxUnreadCountStream(
           @PathVariable("userId") String userId,
           @RequestParam(defaultValue = "2") int iter) {
@@ -58,14 +57,37 @@ public class InboxController {
                     .build());
   }
 
+  @PostMapping(value = "/inbox/{userId}/messages")
+  public Mono<ServerResponse> newMessageForUser(
+          @PathVariable("userId") String userId,
+          @RequestBody Map<String, String> body) {
+
+    log.info("new message for user {}", userId);
+
+    return saveNewMessageForUser(userId, body.get("subject"), body.get("body"))
+            .flatMap( result ->
+                    ServerResponse.accepted().build()
+            );
+  }
+
   @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "not found")
   @ExceptionHandler(InboxNotFoundException.class)
   public void notFoundHandler() {
   }
 
-  private Mono<Inbox>  getInboxForUser(String userId) {
+  private Mono<Inbox> getInboxForUser(String userId) {
     return mongo.query(Inbox.class)
             .matching(query(where("userId").is(userId)))
             .first();
+  }
+
+  private Mono<Void> saveNewMessageForUser(String userId, String subject, String body) {
+    Message message = new Message(null, subject, body, false);
+    return mongo.updateMulti(
+                new Query(where("userId").is(userId)),
+                new Update().inc("unreadCount", 1)
+                            .push("messages", message),
+                Inbox.class)
+            .then();
   }
 }
