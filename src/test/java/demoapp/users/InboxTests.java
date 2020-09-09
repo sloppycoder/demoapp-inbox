@@ -8,11 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.http.HttpStatus;
-import org.springframework.util.Assert;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.test.StepVerifier;
 
 import java.util.List;
 
@@ -38,24 +36,26 @@ class InboxTests {
 	@Order(2)
 	void can_get_unread_count() {
 		WebClient client = WebClient.builder().baseUrl(getUrl("/1111/unread")).build();
-		ClientResponse response = client.get().exchange().block();
-		Integer count = response.bodyToMono(Integer.class).block();
-
-		assertEquals(response.statusCode(), HttpStatus.OK);
-		assertEquals(count, 2);
+		StepVerifier
+			.create(client.get().exchange())
+			.assertNext( response -> {
+				assertEquals(response.statusCode(), HttpStatus.OK);
+				assertEquals(response.bodyToMono(Integer.class), 2);
+			});
 	}
-
 
 	@Test
 	@Order(3)
 	void can_get_unread_count_stream() {
 		WebClient client = WebClient.builder().baseUrl(getUrl("/2222/unread-sse?iter=1")).build();
-		ClientResponse response = client.get().exchange().block();
-		String body = response.bodyToMono(String.class).block();
-
-		assertEquals(response.statusCode(), HttpStatus.OK);
-		assertTrue(body.contains("event:unread-count-event"));
-		assertTrue(body.contains("data:1"));
+		StepVerifier
+				.create(client.get().exchange())
+				.assertNext( response -> {
+					assertEquals(response.statusCode(), HttpStatus.OK);
+					String body = response.bodyToMono(String.class).block();
+					assertTrue(body.contains("event:unread-count-event"));
+					assertTrue(body.contains("data:1"));
+				});
 	}
 
 	private List<Inbox> testData() {
