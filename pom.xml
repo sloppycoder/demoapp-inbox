@@ -12,7 +12,7 @@
 	<artifactId>inbox</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>transactions</name>
-	<description>retrieve historical transactions from MondgoDB</description>
+	<description>handle inbox messages stored in MondgoDB</description>
 
 	<properties>
 		<java.version>11</java.version>

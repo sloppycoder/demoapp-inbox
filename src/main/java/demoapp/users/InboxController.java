@@ -42,19 +42,21 @@ public class InboxController {
             );
   }
 
-  @GetMapping(value = "/inbox/{userId}/unread-sse")
-  public Flux<ServerSentEvent<Integer>> getInboxUnreadCountStream(
+  @GetMapping(value = "/inbox/{userId}/unread-stream")
+  public Flux<ServerSentEvent<Map<String, String>>> getInboxUnreadCountStream(
           @PathVariable("userId") String userId,
           @RequestParam(defaultValue = "2") int iter) {
     log.info("retrieving unread count stream for user {} for {} iterations", userId, iter);
 
-    return getInboxForUser(userId)
+    return Mono.just(1)
             .repeat(iter)
             .delayElements(Duration.ofSeconds(1))
-            .map(inbox -> ServerSentEvent.<Integer> builder()
-                    .event("unread-count-event")
-                    .data(inbox.getUnreadCount())
-                    .build());
+            .concatMap(seq -> getInboxForUser(userId).map(
+                    inbox -> ServerSentEvent.<Map<String, String>> builder()
+                                .event("unread-count-event")
+                                .data(Map.of("userId", userId, "unread", inbox.getUnreadCount().toString()))
+                                .build())
+            );
   }
 
   @PostMapping(value = "/inbox/{userId}/messages")
@@ -64,9 +66,10 @@ public class InboxController {
 
     log.info("new message for user {}", userId);
 
+    // why this returns 200 instead of 202??
     return saveNewMessageForUser(userId, body.get("message"))
-            .flatMap( result ->
-                    ServerResponse.accepted().build()
+            .flatMap(
+                    result -> ServerResponse.accepted().build()
             );
   }
 

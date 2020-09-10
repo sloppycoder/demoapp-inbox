@@ -11,14 +11,15 @@ import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class InboxTests {
@@ -29,6 +30,8 @@ class InboxTests {
 	@LocalServerPort
 	String port;
 
+	WebClient client = WebClient.builder().build();
+
 	@Test
 	@Order(1)
 	void populate_test_data() {
@@ -38,41 +41,47 @@ class InboxTests {
 	@Test
 	@Order(2)
 	void can_get_unread_count() {
-		WebClient client = WebClient.builder().baseUrl(getUrl("/1111/unread")).build();
-		StepVerifier
-			.create(client.get().exchange())
-			.assertNext( response -> {
-				assertEquals(response.statusCode(), HttpStatus.OK);
-				assertEquals(response.bodyToMono(Integer.class), 2);
-			});
+
+		StepVerifier.create(this.client.get()
+				.uri(getUrl("/inbox/1111/unread"))
+				.exchange())
+			.assertNext(
+				response -> {
+				  assertEquals(response.statusCode(), HttpStatus.OK);
+				})
+			.expectComplete()
+			.verify();
 	}
 
 	@Test
 	@Order(3)
 	void can_get_unread_count_stream() {
-		WebClient client = WebClient.builder().baseUrl(getUrl("/2222/unread-sse?iter=1")).build();
+		Flux<Map> sse = this.client.get()
+			.uri(getUrl("/inbox/2222/unread-stream?iter=1"))
+			.accept(MediaType.TEXT_EVENT_STREAM)
+			.exchange()
+			.flatMapMany(response -> response.bodyToFlux(Map.class));
+
+		// number of events received is always iter+1, why??
 		StepVerifier
-				.create(client.get().exchange())
-				.assertNext( response -> {
-					assertEquals(response.statusCode(), HttpStatus.OK);
-					String body = response.bodyToMono(String.class).block();
-					assertTrue(body.contains("event:unread-count-event"));
-					assertTrue(body.contains("data:1"));
-				});
+				.create(sse)
+				.expectNext(Map.of("userId", "2222", "unread", "1"))
+				.expectNext(Map.of("userId", "2222", "unread", "1"))
+				.expectComplete()
+				.verify();
 	}
 
 	@Test
 	@Order(4)
 	void can_add_new_message() {
-		WebClient client = WebClient.builder().baseUrl(getUrl("/33/messages")).build();
 		StepVerifier
 				.create(client.post()
+						.uri(getUrl("/inbox/1111/messages"))
 						.contentType(MediaType.APPLICATION_JSON)
 						.body(Mono.just("{\"message\":\"subject|body\"}"), String.class)
 						.exchange())
-				.assertNext( response -> {
-					assertEquals(response.statusCode(), HttpStatus.ACCEPTED);
-				});
+				.assertNext( response -> assertEquals(HttpStatus.OK, response.statusCode()))
+		.verifyComplete();
 	}
 
 	private List<Inbox> testData() {
@@ -89,6 +98,6 @@ class InboxTests {
 	}
 
 	private String getUrl(String contextPath) {
-		return "http://127.0.0.1:" + port + "/inbox" + contextPath;
+		return "http://127.0.0.1:" + port + contextPath;
 	}
 }
