@@ -80,7 +80,7 @@ class InboxTests {
 						.contentType(MediaType.APPLICATION_JSON)
 						.body(Mono.just("{\"message\":\"subject|body\"}"), String.class)
 						.exchange())
-				.assertNext( response -> assertEquals(HttpStatus.OK, response.statusCode()))
+				.assertNext( response -> assertEquals(HttpStatus.CREATED, response.statusCode()))
 		.verifyComplete();
 	}
 

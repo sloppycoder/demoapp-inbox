@@ -8,12 +8,14 @@ import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 
@@ -60,16 +62,16 @@ public class InboxController {
   }
 
   @PostMapping(value = "/inbox/{userId}/messages")
-  public Mono<ServerResponse> newMessageForUser(
+  public Mono<ResponseEntity<Message>> newMessageForUser(
           @PathVariable("userId") String userId,
           @RequestBody Map<String, String> body) {
-
     log.info("new message for user {}", userId);
-
-    // why this returns 200 instead of 202??
     return saveNewMessageForUser(userId, body.get("message"))
-            .flatMap(
-                    result -> ServerResponse.accepted().build()
+            .map( message ->
+                    ResponseEntity
+                            .created(URI.create("/inbox/" + userId + "/messages/" + message.getId()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(message)
             );
   }
 
@@ -84,12 +86,13 @@ public class InboxController {
             .first();
   }
 
-  private Mono<Void> saveNewMessageForUser(String userId, String message) {
+  private Mono<Message> saveNewMessageForUser(String userId, String line) {
+    Message message = Message.create(line);
     return mongo.updateMulti(
                 new Query(where("userId").is(userId)),
                 new Update().inc("unreadCount", 1)
-                            .push("messages", Message.create(message)),
+                            .push("messages", message),
                 Inbox.class)
-            .then();
+            .then(Mono.just(message));
   }
 }
