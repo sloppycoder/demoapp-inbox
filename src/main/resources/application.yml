@@ -1,6 +1,6 @@
 spring:
-  name:
-    inbox
+  application:
+    name: inbox
   data:
     mongodb:
       uri: mongodb://dev:dev@localhost:27017/dev?authSource=dev

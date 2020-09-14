@@ -2,7 +2,6 @@
 *.bak
 *.so
 *.*~
-*.iml
 *.swp
 *.log
 *.gz

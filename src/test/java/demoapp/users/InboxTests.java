@@ -30,7 +30,7 @@ class InboxTests {
 	@LocalServerPort
 	String port;
 
-	WebClient client = WebClient.builder().build();
+	final WebClient client = WebClient.builder().build();
 
 	@Test
 	@Order(1)
